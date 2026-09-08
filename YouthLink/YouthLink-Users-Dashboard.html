@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; color: var(--content-color-primary); padding: var(--spacing-m, 12px); font-size: 13px; }
+  h2 { font-size: 15px; margin-bottom: 10px; color: var(--content-color-primary); }
+  .caption { font-size: 11px; color: var(--content-color-secondary); margin-bottom: 12px; }
+
+  /* KPI row */
+  .kpi-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .kpi { background: var(--background-color-secondary, #f5f5f5); border: 1px solid var(--border-color-default, #ddd); border-radius: 6px; padding: 8px 14px; flex: 1; min-width: 90px; text-align: center; }
+  .kpi .val { font-size: 22px; font-weight: 700; color: var(--content-color-primary); }
+  .kpi .lbl { font-size: 10px; color: var(--content-color-secondary); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* Layout: chart + table side by side */
+  .main { display: flex; gap: 14px; flex-wrap: wrap; }
+  .chart-section { flex: 1; min-width: 180px; }
+  .table-section { flex: 2; min-width: 240px; }
+
+  /* Bar chart */
+  .bar-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 6px; }
+  .bar-label { width: 60px; font-size: 11px; text-align: right; color: var(--content-color-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; background: var(--background-color-secondary, #eee); border-radius: 4px; height: 18px; position: relative; overflow: hidden; cursor: pointer; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: opacity .2s; background: #6366f1; }
+  .bar-fill:hover { opacity: .75; }
+  .bar-val { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 600; color: #fff; }
+  .chart-title { font-size: 11px; font-weight: 600; color: var(--content-color-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* Table */
+  .search-input { width: 100%; padding: 5px 8px; border: 1px solid var(--border-color-default, #ccc); border-radius: 4px; font-size: 12px; background: var(--background-color-secondary); color: var(--content-color-primary); margin-bottom: 8px; outline: none; }
+  .search-input:focus { border-color: #6366f1; }
+  .tbl-wrap { overflow-y: auto; max-height: 220px; border: 1px solid var(--border-color-default, #ddd); border-radius: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { position: sticky; top: 0; background: var(--background-color-secondary, #f5f5f5); padding: 6px 8px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--content-color-secondary); cursor: pointer; user-select: none; border-bottom: 1px solid var(--border-color-default, #ddd); white-space: nowrap; }
+  thead th:hover { color: var(--content-color-primary); }
+  thead th .sort-icon { margin-left: 3px; opacity: .5; }
+  tbody tr { border-bottom: 1px solid var(--border-color-default, #eee); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--background-color-secondary, #f9f9f9); }
+  td { padding: 6px 8px; vertical-align: top; }
+  .tag { display: inline-block; background: #6366f120; color: #6366f1; border-radius: 3px; padding: 1px 5px; font-size: 10px; margin: 1px 2px 1px 0; }
+  .age-badge { display: inline-block; background: #f59e0b20; color: #b45309; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+  .no-results { text-align: center; color: var(--content-color-secondary); padding: 16px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h2>👥 YouthLink Users</h2>
+<p class="caption">GET /api/Users — 200 OK · 6 users loaded</p>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="main">
+  <div class="chart-section">
+    <div class="chart-title">Age Distribution</div>
+    <div class="bar-wrap" id="ageChart" role="img" aria-label="Bar chart of user age distribution"></div>
+  </div>
+  <div class="table-section">
+    <input class="search-input" id="searchBox" type="text" placeholder="🔍 Search by name, skill, or interest…" aria-label="Search users"/>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-col="id">ID <span class="sort-icon">↕</span></th>
+            <th data-col="name">Name <span class="sort-icon">↕</span></th>
+            <th data-col="age">Age <span class="sort-icon">↕</span></th>
+            <th>Skills</th>
+            <th>Interests</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const users = [
+  {"age":22,"id":1,"interests":["Trading","Anime"],"name":"Ofentse","skills":["Python","Networking"]},
+  {"age":22,"id":2,"interests":["Coding","Cars"],"name":"Ofentse","skills":["Python","Backend"]},
+  {"age":25,"id":3,"interests":["Coding","Business Management"],"name":"Hassan","skills":["SQL","PHP"]},
+  {"age":25,"id":4,"interests":["Coding","Web Development"],"name":"Thato","skills":["JS","React"]},
+  {"age":19,"id":5,"interests":["Programming","Web Development"],"name":"Asande","skills":["HTML","CSS"]},
+  {"age":19,"id":6,"interests":["Mathematics"],"name":"Zee","skills":["Waffling","CSS"]}
+];
+
+// KPIs
+const ages = users.map(u => u.age);
+const avgAge = (ages.reduce((a,b)=>a+b,0)/ages.length).toFixed(1);
+const allSkills = users.flatMap(u => u.skills);
+const uniqueSkills = [...new Set(allSkills)].length;
+const allInterests = users.flatMap(u => u.interests);
+const uniqueInterests = [...new Set(allInterests)].length;
+
+const kpis = [
+  {val: users.length, lbl: 'Total Users'},
+  {val: avgAge, lbl: 'Avg Age'},
+  {val: uniqueSkills, lbl: 'Unique Skills'},
+  {val: uniqueInterests, lbl: 'Unique Interests'},
+];
+const kpiRow = document.getElementById('kpiRow');
+kpis.forEach(k => {
+  const d = document.createElement('div');
+  d.className = 'kpi';
+  d.innerHTML = `<div class="val">${k.val}</div><div class="lbl">${k.lbl}</div>`;
+  kpiRow.appendChild(d);
+});
+
+// Age bar chart
+const ageCounts = {};
+ages.forEach(a => ageCounts[a] = (ageCounts[a]||0)+1);
+const maxCount = Math.max(...Object.values(ageCounts));
+const ageChart = document.getElementById('ageChart');
+Object.entries(ageCounts).sort((a,b)=>+a[0]-+b[0]).forEach(([age, count]) => {
+  const pct = (count/maxCount*100).toFixed(0);
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  row.innerHTML = `
+    <div class="bar-label" title="Age ${age}">Age ${age}</div>
+    <div class="bar-track" title="${count} user(s) aged ${age}">
+      <div class="bar-fill" style="width:${pct}%"></div>
+      <span class="bar-val">${count}</span>
+    </div>`;
+  ageChart.appendChild(row);
+});
+
+// Table
+let sortCol = 'id', sortAsc = true;
+let filterText = '';
+
+function renderTable() {
+  const q = filterText.toLowerCase();
+  let rows = users.filter(u =>
+    u.name.toLowerCase().includes(q) ||
+    u.skills.some(s => s.toLowerCase().includes(q)) ||
+    u.interests.some(i => i.toLowerCase().includes(q)) ||
+    String(u.age).includes(q)
+  );
+  rows.sort((a,b) => {
+    const av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'number') return sortAsc ? av-bv : bv-av;
+    return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+  const tbody = document.getElementById('tableBody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="no-results">No users match your search.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td><strong>${u.name}</strong></td>
+      <td><span class="age-badge">${u.age}</span></td>
+      <td>${u.skills.map(s=>`<span class="tag">${s}</span>`).join('')}</td>
+      <td>${u.interests.map(i=>`<span class="tag" style="background:#10b98120;color:#065f46">${i}</span>`).join('')}</td>
+    </tr>`).join('');
+}
+
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = true; }
+    document.querySelectorAll('thead th .sort-icon').forEach(s => s.textContent = '↕');
+    th.querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+    renderTable();
+  });
+  th.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') th.click(); });
+  th.setAttribute('tabindex', '0');
+});
+
+document.getElementById('searchBox').addEventListener('input', e => {
+  filterText = e.target.value;
+  renderTable();
+});
+
+renderTable();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "Jeffrey",
+  "age": 29,
+  "school_name": "New Academy",
+  "interests": "Python, Flask",
+  "qualifications": "BSc in Informatics",
+  "applications": "Hero Academy"
+}
+
+{
+  "name": "Jeffrey",
+  "age": 29,
+  "company_name": "New Academy",
+  "industry": "Python, Flask",
+  "opportunities": "BSc in Informatics"
+}
+
+{
+  "name": "Jeffrey",
+  "role": "Student"
+}
